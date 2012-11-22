@@ -148,7 +148,7 @@ void main() {
    update_output_cycle_vidage();
    
    if(input(BUTTON_HAUT)&&input(BUTTON_BAS))
-      set_default_delay_between_remplissage(change_cycle_timing()*20);
+      set_default_delay_between_remplissage(change_cycle_timing()*CONST_SEC_IN_A_DAY);
    else{
       check_led_working();
       set_default_delay_between_remplissage(20);
