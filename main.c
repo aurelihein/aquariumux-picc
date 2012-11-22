@@ -37,9 +37,68 @@ typedef unsigned int word;
 #define CONST_SEC_IN_A_DAY (24*3600)   //secondes dans un jour
 
 
+void set_cycle_timing_in_eeprom(int value){
+   write_program_eeprom(0, value);
+   restart_wdt();
+}
+
+int get_cycle_timing_from_eeprom(void){
+   restart_wdt();
+   return read_program_eeprom(0);
+   
+}
+
+void show_cycle_timing(int value){
+   if(value == 1)
+   {
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
+   }
+   if(value == 2)
+   {
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
+      output_high(OUTPUT_LED_EAU_SOURCE);
+   }
+   if(value == 3)
+   {
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
+      output_high(OUTPUT_LED_EAU_SOURCE);
+      output_high(OUTPUT_LED_VIDANGE);
+   }
+   if(value == 4)
+   {
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
+      output_high(OUTPUT_LED_EAU_SOURCE);
+      output_high(OUTPUT_LED_VIDANGE);
+      output_high(LED_BUTTON_HAUT);
+   }
+   if(value == 5)
+   {
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
+      output_high(OUTPUT_LED_EAU_SOURCE);
+      output_high(OUTPUT_LED_VIDANGE);
+      output_high(LED_BUTTON_HAUT);
+      output_high(LED_BUTTON_BAS);
+   }
+   delay_ms(500);
+   restart_wdt();
+   delay_ms(500);
+   restart_wdt();
+   delay_ms(500);
+   restart_wdt();
+   delay_ms(500);
+   restart_wdt();
+   output_low(OUTPUT_LED_EAU_OSMOSEE);
+   output_low(OUTPUT_LED_EAU_SOURCE);
+   output_low(OUTPUT_LED_VIDANGE);
+   output_low(LED_BUTTON_HAUT);
+   output_low(LED_BUTTON_BAS);
+   restart_wdt();
+}
+
 int change_cycle_timing(void){
    int value = 1;
-   while(input(BUTTON_BAS)||input(BUTTON_HAUT));
+   while(input(BUTTON_BAS)||input(BUTTON_HAUT))
+      restart_wdt();
    while(!input(BUTTON_BAS))
    {
       output_high(OUTPUT_LED_EAU_OSMOSEE);
@@ -134,7 +193,7 @@ void update_led_status(int value){
 }
 
 void main() {
-  
+   int tmp_cycle_timing_value = 0;
    disable_interrupts(GLOBAL);
    set_tris_a(0xf1);
    set_tris_b(0);
@@ -148,11 +207,18 @@ void main() {
    update_output_cycle_vidage();
    
    if(input(BUTTON_HAUT)&&input(BUTTON_BAS))
-      set_default_delay_between_remplissage(change_cycle_timing()*CONST_SEC_IN_A_DAY);
-   else{
-      check_led_working();
-      set_default_delay_between_remplissage(20);
-   }   
+      set_cycle_timing_in_eeprom(change_cycle_timing());
+   restart_wdt();
+   
+   tmp_cycle_timing_value = get_cycle_timing_from_eeprom();
+   if((tmp_cycle_timing_value > 5)||(tmp_cycle_timing_value < 1))
+   {
+      tmp_cycle_timing_value = 2;
+      set_cycle_timing_in_eeprom(tmp_cycle_timing_value);
+   }
+   restart_wdt();
+   show_cycle_timing(tmp_cycle_timing_value);
+   set_default_delay_between_remplissage(CONST_SEC_IN_A_DAY*tmp_cycle_timing_value);
    start_a_cycle();
    restart_wdt();
    
