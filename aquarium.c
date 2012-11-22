@@ -24,26 +24,28 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 typedef enum {INIT_REMPLISSAGE = 0, REMPLISSAGE_EAU_OSMOSEE, FIN_EAU_OSMOSEE, REMPLISSAGE_EAU_SOURCE, FIN_EAU_SOURCE, FIN_REMPLISSAGE} remplissage_states;
-typedef enum {INIT_VIDAGE = 0, DEBUT_VIDAGE, VIDAGE, FIN_VIDAGE, ATTENTE_PROCHAIN_CYCLE_VIDAGE} vidage_states;
+typedef enum {INIT_VIDAGE = 0, DEBUT_VIDAGE, VIDAGE, FIN_VIDAGE} vidage_states;
 
-#define OUTPUT_EAU_OSMOSEE PIN_B0
-#define OUTPUT_EAU_SOURCE  PIN_B1
-#define OUTPUT_VIDANGE     PIN_B2
+#define OUTPUT_EAU_OSMOSEE PIN_B1
+#define OUTPUT_EAU_SOURCE  PIN_B2
+#define OUTPUT_VIDANGE     PIN_B3
 
-#define ADD_TEMPO_ALLUMAGE_VIDAGE      (0)   //en secondes
-#define ADD_TEMPO_ATTENTE_ENTRE_VIDAGE   (2)   //en secondes
-#define D_TEMPO_ALLUMAGE_VIDAGE      (10)   //en secondes
-#define D_TEMPO_ATTENTE_ENTRE_VIDAGE   (120)   //en secondes
-volatile int16 value_tempo_allumage_vidage = 0;
-volatile int16 value_tempo_attente_entre_vidage = 0;
+#define OUTPUT_LED_EAU_OSMOSEE PIN_B5
+#define OUTPUT_LED_EAU_SOURCE  PIN_B4
+#define OUTPUT_LED_VIDANGE     PIN_A0
 
-//entrees
-volatile char capteur_niveau_vide = 1;
-volatile char capteur_niveau_eau_osmosee = 0;
-volatile char capteur_niveau_plein = 0;
+#define CAPTEUR_VIDE          PIN_D1
+#define CAPTEUR_EAU_OSMOSEE   PIN_D2
+#define CAPTEUR_PLEIN         PIN_D3
 
-volatile int16 tempo_allumage_vidage = 0;
-volatile int16 tempo_attente_entre_vidage = 0;
+#define BUTTON_HAUT           PIN_A1
+#define LED_BUTTON_HAUT       PIN_A2
+#define BUTTON_BAS            PIN_A4
+#define LED_BUTTON_BAS        PIN_A3
+
+long default_delay_between_remplissage = (20);//CHANGE
+
+long delay_between_remplissage = 0;
 
 //1 remplissage automatique activée
 char remplissage_auto = 1;
@@ -51,141 +53,57 @@ char remplissage_auto = 1;
 remplissage_states remplissage_state;
 vidage_states vidage_state;
 
-void get_tempo_from_eeprom(void)
-{
-   value_tempo_allumage_vidage = read_program_eeprom(ADD_TEMPO_ALLUMAGE_VIDAGE);
-   printf("read %ld at address:%d\r\n",value_tempo_allumage_vidage,ADD_TEMPO_ALLUMAGE_VIDAGE);
-   
-   value_tempo_attente_entre_vidage = read_program_eeprom(ADD_TEMPO_ATTENTE_ENTRE_VIDAGE);
-   printf("read %ld at address:%d\r\n",value_tempo_attente_entre_vidage,ADD_TEMPO_ATTENTE_ENTRE_VIDAGE);
+void set_default_delay_between_remplissage(long value){
+   default_delay_between_remplissage = value;
 }
-
-void set_tempo_into_eeprom(void)
-{
-   write_program_eeprom(ADD_TEMPO_ALLUMAGE_VIDAGE, D_TEMPO_ALLUMAGE_VIDAGE);
-   value_tempo_allumage_vidage = D_TEMPO_ALLUMAGE_VIDAGE;
-   printf("write %ld at address:%d\r\n",value_tempo_allumage_vidage,ADD_TEMPO_ALLUMAGE_VIDAGE);
-   
-   
-   write_program_eeprom(ADD_TEMPO_ATTENTE_ENTRE_VIDAGE, D_TEMPO_ATTENTE_ENTRE_VIDAGE);
-   value_tempo_attente_entre_vidage = D_TEMPO_ATTENTE_ENTRE_VIDAGE;
-   printf("write %ld at address:%d\r\n",value_tempo_attente_entre_vidage,ADD_TEMPO_ATTENTE_ENTRE_VIDAGE);
-}
-
-int cycle = 0;
-void test_add_cycle (void){
-   if(cycle == 1){
-         capteur_niveau_vide=0;
-         printf("TEST set capteur_niveau_vide=0\r\n");
-   }
-   if(cycle == 10){
-         capteur_niveau_eau_osmosee=1;
-         printf("TEST set capteur_niveau_eau_osmosee=1\r\n");
-         
-   }
-   if(cycle == 30){
-         capteur_niveau_plein=1;
-         printf("TEST set capteur_niveau_plein\r\n");
-   }
-   cycle++;
-}
-
-void printf_remplissage_state(remplissage_states s){
-   switch(s)
-   {
-      case INIT_REMPLISSAGE :
-         printf("REMPLISSAGE:INIT_REMPLISSAGE\r\n");
-      break;
-      case REMPLISSAGE_EAU_OSMOSEE :
-         printf("REMPLISSAGE:REMPLISSAGE_EAU_OSMOSEE\r\n");
-      break;
-      case FIN_EAU_OSMOSEE :
-         printf("REMPLISSAGE:FIN_EAU_OSMOSEE\r\n");
-      break;
-      case REMPLISSAGE_EAU_SOURCE :
-         printf("REMPLISSAGE:REMPLISSAGE_EAU_SOURCE\r\n");
-      break;
-      case FIN_EAU_SOURCE :
-         printf("REMPLISSAGE:FIN_EAU_SOURCE\r\n");
-      break;
-      case FIN_REMPLISSAGE :
-         printf("REMPLISSAGE:FIN_REMPLISSAGE\r\n");
-      break;
-      default :
-         printf("REMPLISSAGE:UNKNOW_REMPLISSAGE_STATE\r\n");
-      break;
-   }
-}
-
-void printf_vidage_state(vidage_states s){
-   switch(s)
-   {
-      case INIT_VIDAGE :
-         printf("VIDAGE:INIT_VIDAGE\r\n");
-      break;
-      case DEBUT_VIDAGE :
-         printf("VIDAGE:DEBUT_VIDAGE\r\n");
-      break;
-      case VIDAGE :
-         printf("VIDAGE:VIDAGE\r\n");
-      break;
-      case FIN_VIDAGE :
-         printf("VIDAGE:FIN_VIDAGE\r\n");
-      break;
-      case ATTENTE_PROCHAIN_CYCLE_VIDAGE :
-         printf("VIDAGE:ATTENTE_PROCHAIN_CYCLE_VIDAGE\r\n");
-      break;
-      default :
-         printf("VIDAGE:UNKNOW_VIDAGE_STATE\r\n");
-      break;
-   }
-}
-
 
 char get_capteur_niveau_vide(void){
-   return capteur_niveau_vide;
+   //return capteur_niveau_vide;
+   return !input(CAPTEUR_VIDE);
 }
 char get_capteur_niveau_eau_osmosee(void){
-   return capteur_niveau_eau_osmosee;
+   //return capteur_niveau_eau_osmosee;
+   return input(CAPTEUR_EAU_OSMOSEE);
 }
 char get_capteur_niveau_plein(void){
-   return capteur_niveau_plein;
+   //return capteur_niveau_plein;
+   return input(CAPTEUR_PLEIN);
 }
 
 void set_prise_electrique_eau_osmosee(char state){
    if(state)
    {
-      printf("TURN ON:eau_osmosee\r\n");
       output_high(OUTPUT_EAU_OSMOSEE);
+      output_high(OUTPUT_LED_EAU_OSMOSEE);
    }
    else
    {
-      printf("TURN OFF:eau_osmosee\r\n");
       output_low(OUTPUT_EAU_OSMOSEE);
+      output_low(OUTPUT_LED_EAU_OSMOSEE);
    }
 }
 void set_prise_electrique_eau_source(char state){
    if(state)
    {
-      printf("TURN ON:eau_source\r\n");
       output_high(OUTPUT_EAU_SOURCE);
+      output_high(OUTPUT_LED_EAU_SOURCE);
    }
    else
    {
-      printf("TURN OFF:eau_source\r\n");
       output_low(OUTPUT_EAU_SOURCE);
+      output_low(OUTPUT_LED_EAU_SOURCE);
    }
 }
 void set_prise_electrique_vidage(char state){
    if(state)
    {
-      printf("TURN ON:vidage\r\n");
       output_high(OUTPUT_VIDANGE);
+      output_high(OUTPUT_LED_VIDANGE);
    }
    else
    {
-      printf("TURN OFF:vidage\r\n");
       output_low(OUTPUT_VIDANGE);
+      output_low(OUTPUT_LED_VIDANGE);
    }
 }
 
@@ -196,27 +114,24 @@ void init_aquarium_state(void)
     set_prise_electrique_eau_osmosee(0);
     set_prise_electrique_eau_source(0);
     set_prise_electrique_vidage(0);
+    delay_between_remplissage = default_delay_between_remplissage;
 }
 
-void incremente_tempo(void){
-   tempo_allumage_vidage++;
-   tempo_attente_entre_vidage++;
-   switch(vidage_state)
-   {
-      case VIDAGE :
-         printf("TICK=>tempo_allumage_vidage:%ld to %ld\r\n",tempo_allumage_vidage,value_tempo_allumage_vidage);
-         break;
-      case ATTENTE_PROCHAIN_CYCLE_VIDAGE :
-         printf("TICK=>tempo_attente_entre_vidage:%ld to %ld\r\n",tempo_attente_entre_vidage,value_tempo_attente_entre_vidage);
-         break;
-      default :
-         printf("TICK\r\n");
-         break;
-   }
+void change_timing(void){
+   if(remplissage_state == INIT_REMPLISSAGE)
+      delay_between_remplissage--;  
+}
+
+void start_a_cycle(void){
+   delay_between_remplissage = 0;
+}
+
+void stop_cycle(void){
+   init_aquarium_state();
 }
 
 void update_output_cycle_remplissage(void){
-   printf_remplissage_state(remplissage_state);
+   //printf_remplissage_state(remplissage_state);
    switch(remplissage_state)
    {
       case INIT_REMPLISSAGE :
@@ -243,14 +158,13 @@ void update_output_cycle_remplissage(void){
 }
 
 void update_output_cycle_vidage(void){
-   printf_vidage_state(vidage_state);
+   //printf_vidage_state(vidage_state);
    switch(vidage_state)
    {
       case INIT_VIDAGE :
          //rien
       break;
       case DEBUT_VIDAGE :
-         tempo_allumage_vidage = 0;
          set_prise_electrique_vidage(1);
       break;
       case VIDAGE :
@@ -258,10 +172,6 @@ void update_output_cycle_vidage(void){
       break;
       case FIN_VIDAGE :
          set_prise_electrique_vidage(0);
-         tempo_attente_entre_vidage = 0;
-      break;
-      case ATTENTE_PROCHAIN_CYCLE_VIDAGE :
-         //rien
       break;
       default :
       break;
@@ -272,11 +182,15 @@ int cycle_remplissage(void){
    int update_cycle = 0;
    switch(remplissage_state)
    {
-      case INIT_REMPLISSAGE :
-         if(get_capteur_niveau_vide() && !get_capteur_niveau_eau_osmosee() && !get_capteur_niveau_plein()){
-            remplissage_state = REMPLISSAGE_EAU_OSMOSEE;
-            update_cycle = 1;
-         }
+      case INIT_REMPLISSAGE :      
+         if(delay_between_remplissage<=0) 
+            {
+               delay_between_remplissage = default_delay_between_remplissage;
+               if(get_capteur_niveau_vide() && !get_capteur_niveau_eau_osmosee() && !get_capteur_niveau_plein()){
+                  remplissage_state = REMPLISSAGE_EAU_OSMOSEE;
+                  update_cycle = 1;
+               }
+            }
       break;
       case REMPLISSAGE_EAU_OSMOSEE :
          if(get_capteur_niveau_eau_osmosee()){
@@ -321,7 +235,7 @@ int cycle_vidage(void){
    switch(vidage_state)
    {
       case INIT_VIDAGE :
-         if(!capteur_niveau_vide && (remplissage_state==INIT_REMPLISSAGE) ){
+         if(!get_capteur_niveau_vide() && (remplissage_state==INIT_REMPLISSAGE) ){
             vidage_state = DEBUT_VIDAGE;
             update_cycle = 1;
          }
@@ -333,24 +247,15 @@ int cycle_vidage(void){
          }
       break;
       case VIDAGE :
-         if(capteur_niveau_vide || (tempo_allumage_vidage >= value_tempo_allumage_vidage) ){
+         if(get_capteur_niveau_vide()){
             vidage_state = FIN_VIDAGE;
             update_cycle = 1;
          }
       break;
       case FIN_VIDAGE :
-         if(capteur_niveau_vide){
-            vidage_state = INIT_VIDAGE;
-         }else{
-            vidage_state = ATTENTE_PROCHAIN_CYCLE_VIDAGE;
-         }
-         update_cycle = 1;
-      break;
-      case ATTENTE_PROCHAIN_CYCLE_VIDAGE :
-         if(tempo_attente_entre_vidage >= value_tempo_attente_entre_vidage){
+         
             vidage_state = INIT_VIDAGE;
             update_cycle = 1;
-         }
       break;
       default :
       break;
