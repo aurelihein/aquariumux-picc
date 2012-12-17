@@ -25,7 +25,7 @@
 /* ----------------------------------------------------------------------- */
 /* Fichier source compilable avec PICC CCS */
 #include <16F877a.h>
-#fuses HS, WDT, NOPROTECT, BROWNOUT, PUT, NOLVP
+#fuses HS, NOWDT, NOPROTECT, BROWNOUT, PUT, NOLVP
 #use delay(clock=20000000)
 
 #include "aquarium.c"
@@ -36,6 +36,15 @@ typedef unsigned int word;
 
 #define CONST_SEC_IN_A_DAY (24*3600)   //secondes dans un jour
 
+int is_button_haut_pressed(void)
+{
+   return !input(BUTTON_HAUT);
+}
+
+int is_button_bas_pressed(void)
+{
+   return !input(BUTTON_BAS);
+}
 
 void set_cycle_timing_in_eeprom(int value){
    write_program_eeprom(0, value);
@@ -97,9 +106,9 @@ void show_cycle_timing(int value){
 
 int change_cycle_timing(void){
    int value = 1;
-   while(input(BUTTON_BAS)||input(BUTTON_HAUT))
+   while(is_button_haut_pressed()||is_button_bas_pressed())
       restart_wdt();
-   while(!input(BUTTON_BAS))
+   while(!is_button_bas_pressed())
    {
       output_high(OUTPUT_LED_EAU_OSMOSEE);
       output_high(OUTPUT_LED_EAU_SOURCE);
@@ -132,7 +141,7 @@ int change_cycle_timing(void){
       }
       delay_ms(300);
       restart_wdt();
-      if(input(BUTTON_HAUT))
+      if(is_button_haut_pressed())
          value=((value+1)%5);
       if(!value)
          value=1;
@@ -192,21 +201,64 @@ void update_led_status(int value){
    }
 }
 
+void init_io(void){
+/*
+#define OUTPUT_EAU_OSMOSEE PIN_B1
+#define OUTPUT_EAU_SOURCE  PIN_B2
+#define OUTPUT_VIDANGE     PIN_B3
+
+#define OUTPUT_LED_EAU_OSMOSEE PIN_B5
+#define OUTPUT_LED_EAU_SOURCE  PIN_B4
+#define OUTPUT_LED_VIDANGE     PIN_A0
+
+#define CAPTEUR_VIDE          PIN_D1
+#define CAPTEUR_EAU_OSMOSEE   PIN_D2
+#define CAPTEUR_PLEIN         PIN_D3
+
+#define BUTTON_HAUT           PIN_A1
+#define LED_BUTTON_HAUT       PIN_A2
+#define BUTTON_BAS            PIN_A4
+#define LED_BUTTON_BAS        PIN_A3
+*/
+
+   set_tris_a(0b00010010);
+   set_tris_b(0);
+   set_tris_d(0b00001111);
+   //Entrées
+   input(BUTTON_HAUT);
+   input(BUTTON_BAS);
+   input(CAPTEUR_VIDE);
+   input(CAPTEUR_EAU_OSMOSEE);
+   input(CAPTEUR_PLEIN);
+   //LEDs
+   output_high(OUTPUT_LED_EAU_OSMOSEE);
+   output_high(OUTPUT_LED_EAU_SOURCE);
+   output_high(OUTPUT_LED_VIDANGE);
+   output_high(LED_BUTTON_HAUT);
+   output_high(LED_BUTTON_BAS);
+   output_low(OUTPUT_LED_EAU_OSMOSEE);
+   output_low(OUTPUT_LED_EAU_SOURCE);
+   output_low(OUTPUT_LED_VIDANGE);
+   output_low(LED_BUTTON_HAUT);
+   output_low(LED_BUTTON_BAS);
+   //relais
+   output_low(OUTPUT_EAU_OSMOSEE);
+   output_low(OUTPUT_EAU_SOURCE);
+   output_low(OUTPUT_VIDANGE);
+
+}
+
 void main() {
    int tmp_cycle_timing_value = 0;
    disable_interrupts(GLOBAL);
-   set_tris_a(0xf1);
-   set_tris_b(0);
-   set_tris_d(0);
-   output_d(0);
-
-   setup_wdt(WDT_2304MS);
+   init_io();
+   //setup_wdt(WDT_2304MS);
 
    init_aquarium_state();
    update_output_cycle_remplissage();
    update_output_cycle_vidage();
    
-   if(input(BUTTON_HAUT)&&input(BUTTON_BAS))
+   if(is_button_haut_pressed()&&is_button_bas_pressed())
       set_cycle_timing_in_eeprom(change_cycle_timing());
    restart_wdt();
    
@@ -233,9 +285,11 @@ void main() {
       delay_ms(500);
       restart_wdt();
       change_timing();
-      if(input(BUTTON_HAUT))
+      if(is_button_haut_pressed())
+      {
          start_a_cycle();
-      if(input(BUTTON_BAS))
+      }
+      if(is_button_bas_pressed())
          stop_cycle();
       restart_wdt();
    }
@@ -273,3 +327,4 @@ void very_start_test(void)
       restart_wdt();
    }
 }
+

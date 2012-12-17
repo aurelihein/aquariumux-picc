@@ -47,7 +47,7 @@ long default_delay_between_remplissage = (20);//CHANGE
 
 long delay_between_remplissage = 0;
 
-//1 remplissage automatique activÃ©e
+//1 remplissage automatique activée
 char remplissage_auto = 1;
 
 remplissage_states remplissage_state;
@@ -59,15 +59,15 @@ void set_default_delay_between_remplissage(long value){
 
 char get_capteur_niveau_vide(void){
    //return capteur_niveau_vide;
-   return !input(CAPTEUR_VIDE);
+   return input(CAPTEUR_VIDE);
 }
 char get_capteur_niveau_eau_osmosee(void){
    //return capteur_niveau_eau_osmosee;
-   return input(CAPTEUR_EAU_OSMOSEE);
+   return !input(CAPTEUR_EAU_OSMOSEE);
 }
 char get_capteur_niveau_plein(void){
    //return capteur_niveau_plein;
-   return input(CAPTEUR_PLEIN);
+   return !input(CAPTEUR_PLEIN);
 }
 
 void set_prise_electrique_eau_osmosee(char state){
@@ -264,3 +264,4 @@ int cycle_vidage(void){
       update_output_cycle_vidage();
    return 0;
 }
+
